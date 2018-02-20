@@ -237,13 +237,9 @@ function New-DisaStigConfig {
             ## remove any escaping characters for the comments and description...not important to maintain
             $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Registry)"
             $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
+            }
 
-            ## create the DSC configuration based off the parsing of the CheckContent
-            $NewDscConfig = New-DSCRegistryConfig -RuleHeader $RuleHeader -RuleTitle $($STIG.RuleTitle) `
-                -Description $VulnsDetailsSanitized -RuleID $($STIG.RuleID) -ValueName $ValueName -ValueData $ValueData `
-                -Key $Key -ValueType $ValueType
-            $DscConfigCollection += $NewDscConfig
-            } elseif ($STIG.RuleID -notin $Exceptions) {
+            if ($STIG.RuleID -notin $Exceptions) {
                 $Lines = $($STIG.Check).Split("`n")
                 $CheckLines = ""
                 ## loop through each line of the the CheckContent
@@ -266,7 +262,7 @@ function New-DisaStigConfig {
                         Key = $Key
                         ValueType = $ValueType
                     }
-                    
+
                     $NewDscConfig = New-DSCRegistryConfig @NewDscRegistryConfigParameters
 
                     $DscConfigCollection += $NewDscConfig
@@ -290,7 +286,6 @@ function New-DisaStigConfig {
 "@
         $DSC | Out-File $outFile
     }# close END
-  
 }# close New-DisaStigConfig
 #TODO add console count of stigs processed vs reg and non-reg
 Export-ModuleMember -Function New-DisaStigConfig
