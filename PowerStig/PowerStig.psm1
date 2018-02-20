@@ -26,7 +26,7 @@ function Get-RegistryPath {
         [string]$InputLine,
         [string]$Rule )
 
-    $RegPath = switch -wildcard ($strLine) {
+    $RegPath = switch -wildcard ($InputLine) {
         "Registry Path: *" { $( ($PSItem -replace "Registry Path: ", "").Trim() ) }
         default { $null }
     }
@@ -46,7 +46,7 @@ function Get-RegistryValueName {
         [string]$InputLine,
         [string]$Rule )
         
-        $ValueName = switch -wildcard ($strLine) {
+        $ValueName = switch -wildcard ($InputLine) {
             "Value Name: *" { $( ($PSItem -replace "Value Name: ", "").Trim() ) }
             default { $null }
         }
@@ -66,8 +66,8 @@ function Get-RegistryValueType {
         [string]$InputLine,
         [string]$Rule )
 
-        If ($strLine -like "*Type: *") {
-            $ValueType = switch -wildcard ($strLine) {
+        If ($InputLine -like "*Type: *") {
+            $ValueType = switch -wildcard ($InputLine) {
                 "*REG_DWORD*" {"Dword"} 
                 "*REG_SZ" {"String"}
                 "*REG_BINARY" {"Binary"}
