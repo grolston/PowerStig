@@ -109,6 +109,7 @@ function New-DisaStigConfig {
                             Write-Debug "The identified registry path for $($STIG.Ruleid) : $Hive"
                         } Else {
                             Write-Debug "No identified registry path for $($STIG.Ruleid)."
+                        }
                     }
                     
                     ## find the registry path and put together with hive
