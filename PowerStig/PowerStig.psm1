@@ -138,7 +138,16 @@ function New-DisaStigConfig {
                         $Path = Get-RegistryPath -InputLine $strLine -RuleId $($STIG.Ruleid)
                     }
 
-                    $Key = $Hive + $Path
+                    # Build Key
+                    If ( $Key -eq $Null ) {
+                        If ( ($Hive) -and ($Path) ) {
+                            $Key = $Hive + $Path
+                            Write-Debug "The identified key for $($STIG.Ruleid) : $Key"
+                        } Else {
+                            Write-Debug "No identified key for $($STIG.Ruleid)."
+                        }
+                    }
+                    
                     ## find the -ValueName portion of our audit
                     elseif ($strLine -LIKE "Value Name: *") {
                         $ValueName = ($strLine -replace "Value Name: ", "").Trim()  
