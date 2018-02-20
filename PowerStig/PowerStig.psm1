@@ -6,8 +6,8 @@ function Get-RegistryHive {
         [string]$RuleId )
     
     $Hive = switch -regex ($strLine) {
-        "HKEY_LOCAL_MACHINE" { "HKLM:" }
-        "HKEY_CURRENT_USER" { "HKCU:" }
+        "HKEY_LOCAL_MACHINE" { "HKLM:" ; Break }
+        "HKEY_CURRENT_USER" { "HKCU:" ; Break }
         default { $null }
     }
     
@@ -27,7 +27,7 @@ function Get-RegistryPath {
         [string]$Rule )
 
     $RegPath = switch -wildcard ($InputLine) {
-        "Registry Path: *" { $( ($PSItem -replace "Registry Path: ", "").Trim() ) }
+        "Registry Path: *" { $( ($PSItem -replace "Registry Path: ", "").Trim() ) ; Break }
         default { $null }
     }
     
@@ -47,7 +47,7 @@ function Get-RegistryValueName {
         [string]$Rule )
         
         $ValueName = switch -wildcard ($InputLine) {
-            "Value Name: *" { $( ($PSItem -replace "Value Name: ", "").Trim() ) }
+            "Value Name: *" { $( ($PSItem -replace "Value Name: ", "").Trim() ) ; Break }
             default { $null }
         }
 
@@ -68,12 +68,12 @@ function Get-RegistryValueType {
 
         If ($InputLine -like "*Type: *") {
             $ValueType = switch -regex ($InputLine) {
-                "REG_DWORD*" { "Dword" } 
-                "REG_SZ" { "String" }
-                "REG_BINARY" { "Binary" }
-                "REG_QWORD" { "Qword" }
-                "REG_MULTI_SZ" { "MultiString" }
-                "REG_EXPAND_SZ" { "ExpandString" }
+                "REG_DWORD*" { "Dword" ; Break } 
+                "REG_SZ" { "String" ; Break }
+                "REG_BINARY" { "Binary" ; Break }
+                "REG_QWORD" { "Qword" ; Break }
+                "REG_MULTI_SZ" { "MultiString" ; Break }
+                "REG_EXPAND_SZ" { "ExpandString" ; Break }
                 default { $null }
             }
         }
@@ -97,8 +97,8 @@ function Get-RegistryValueData {
             #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
             ## todo: replace this with regex...list has grown
             $ValueData = switch -regex ($InputLine) {
-                "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) }
-                "\d{1}" { $Matches[0] }
+                "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) ; Break }
+                "\d{1}" { $Matches[0] ; Break }
                 Default { $null }
             } # close switch
         }
