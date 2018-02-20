@@ -24,21 +24,41 @@ function Get-RegistryPath {
     [CmdletBinding()]
     param(
         [string]$InputLine,
-        [string]$RuleId )
+        [string]$Rule )
 
     $RegPath = switch -wildcard ($strLine) {
-        "Registry Path: *" { $(($PSItem -replace "Registry Path: ", "").Trim()) }
+        "Registry Path: *" { $( ($PSItem -replace "Registry Path: ", "").Trim() ) }
         default { $null }
     }
     
     If ($Path) {
-        Write-Debug "The identified registry path for $RuleId) : $Path"
+        Write-Debug "The identified registry path for $Rule : $Path"
     } Else {
-        Write-Debug "No identified registry path for $RuleId)."
+        Write-Debug "No identified registry path for $Rule."
     }
 
     $RegPath
 } # close Get-RegistryPath
+
+function Get-RegistryValueName {
+    [CmdletBinding()]
+    param(
+        [string]$InputLine,
+        [string]$Rule )
+        
+        $ValueName = switch -wildcard ($strLine) {
+            "Value Name: *" { $( ($PSItem -replace "Value Name: ", "").Trim() ) }
+            default { $null }
+        }
+
+        If ($ValueName) {
+            Write-Debug "The identified value name for $Rule : $ValueName"
+        } Else {
+            Write-Debug "No identified value name for $Rule." 
+        }
+
+        $ValueName
+} # close Get-RegistryValueName
 
   
 function Get-RegTypeValue {
@@ -130,12 +150,12 @@ function New-DisaStigConfig {
                     ## find the registry hive
                     
                     If ($Hive -eq $Null) {
-                        $Hive = Get-RegistryHive -InputLine $strLine -RuleId $($STIG.Ruleid)
+                        $Hive = Get-RegistryHive -InputLine $strLine -Rule $($STIG.Ruleid)
                     }
                     
                     ## find the registry path
                     If ($Path -eq $Null) {
-                        $Path = Get-RegistryPath -InputLine $strLine -RuleId $($STIG.Ruleid)
+                        $Path = Get-RegistryPath -InputLine $strLine -Rule $($STIG.Ruleid)
                     }
 
                     # Build Key
@@ -147,12 +167,11 @@ function New-DisaStigConfig {
                             Write-Debug "No identified key for $($STIG.Ruleid)."
                         }
                     }
-                    
-                    ## find the -ValueName portion of our audit
-                    elseif ($strLine -LIKE "Value Name: *") {
-                        $ValueName = ($strLine -replace "Value Name: ", "").Trim()  
-                        Write-Debug "The identified value name for $($STIG.Ruleid) : $ValueName" 
+
+                    If ($ValueName -eq $Null) {
+                        $ValueName = Get-RegistryValueName -InputLine $strLine -Rule $($STIG.Ruleid)
                     }
+
                     ## find the -ValueType portion of our audit
                     elseif ($strLine -LIKE "*Type: *") {
                         $ValueTypeParse = $($strLine -replace "Type: ", "") -replace "Value ", ""
