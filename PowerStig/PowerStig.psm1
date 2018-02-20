@@ -60,20 +60,32 @@ function Get-RegistryValueName {
         $ValueName
 } # close Get-RegistryValueName
 
-  
-function Get-RegTypeValue {
-    PARAM([string]$Type)
-    [string]$ValueType = switch -wildcard ($Type) { 
-        "*REG_DWORD*" {"Dword"} 
-        "*REG_SZ" {"String"}
-        "*REG_BINARY" {"Binary"}
-        "*REG_QWORD" {"Qword"}
-        "*REG_MULTI_SZ" {"MultiString"}
-        "*REG_EXPAND_SZ" {"ExpandString"}
-    }
-    write-output $ValueType
-}# close Get-RegTypeValue
+function Get-RegistryValueType {
+    [CmdletBinding()]
+    param(
+        [string]$InputLine,
+        [string]$Rule )
 
+        If ($strLine -like "*Type: *") {
+            $ValueType = switch -wildcard ($strLine) {
+                "*REG_DWORD*" {"Dword"} 
+                "*REG_SZ" {"String"}
+                "*REG_BINARY" {"Binary"}
+                "*REG_QWORD" {"Qword"}
+                "*REG_MULTI_SZ" {"MultiString"}
+                "*REG_EXPAND_SZ" {"ExpandString"}
+            }
+        }
+        
+        If ($ValueType) {
+            Write-Debug "The identified value type for $Rule : $ValueType" 
+        } Else {
+            Write-Debug "No identified value type for $Rule."
+        }
+
+        $ValueType
+} # close Get-RegistryValueType
+  
 function New-DisaStigConfig {
     <#
   .Synopsis
@@ -172,12 +184,10 @@ function New-DisaStigConfig {
                         $ValueName = Get-RegistryValueName -InputLine $strLine -Rule $($STIG.Ruleid)
                     }
 
-                    ## find the -ValueType portion of our audit
-                    elseif ($strLine -LIKE "*Type: *") {
-                        $ValueTypeParse = $($strLine -replace "Type: ", "") -replace "Value ", ""
-                        $ValueType = Get-RegTypeValue $ValueTypeParse.Trim()
-                        Write-Debug "The identified value type for $($STIG.Ruleid) : $ValueType"  
+                    If ($ValueType -eq $Null) {
+                        $ValueType = Get-RegistryValueType -InputLine $strLine -Rule $($STIG.Ruleid)
                     }
+
                     ## find the -ValueData  portion of our audit
                     elseif ($strLine -LIKE "Value: *") {
                         $ValueData = ($strLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
