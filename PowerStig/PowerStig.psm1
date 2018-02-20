@@ -180,6 +180,7 @@ function New-DisaStigConfig {
         $DscConfigCollection = @()
         ## loop through the xccdf benchmark collecting data into an object collection
         foreach ($rule in $StigX.Benchmark.Group.Rule) {
+            
             ## create a new PSObject collecting and stripping out as required.
             $STIG = New-Object -TypeName PSObject -Property ([ordered]@{
                     RuleID               = $rule.id
@@ -190,6 +191,15 @@ function New-DisaStigConfig {
                     Fix                  = $rule.fixtext.'#text'
                     ControlIdentifier    = $rule.ident.'#text'
                 })
+
+            # Start with clean variables
+            $Hive = $Null
+            $Path = $Null
+            $Key = $Null
+            $ValueName = $Null
+            $ValueType = $Null
+            $ValueData = $Null
+
             ## A majority of the simple registry checks start with the Registry Hive string
             ## which we use to create our registry resource in the DSC configuration script
             ## TODO: split the logic out into a separate function
@@ -251,6 +261,22 @@ function New-DisaStigConfig {
                     $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Policy)"
                     $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
                     
+                $Abort = Switch ( $True ) {
+                    { [String]::IsNullOrEmpty($RuleHeader) } { $true }
+                    { [String]::IsNullOrEmpty($($STIG.RuleTitle)) } { $true }
+                    { [String]::IsNullOrEmpty($VulnsDetailsSanitized) } { $true }
+                    { [String]::IsNullOrEmpty($($STIG.RuleID)) } { $true }
+                    { [String]::IsNullOrEmpty($ValueName) } { $true }
+                    { [String]::IsNullOrEmpty($ValueData) } { $true }
+                    { [String]::IsNullOrEmpty($Key) } { $true }
+                    { [String]::IsNullOrEmpty($ValueType) } { $true }
+                    default { $False }
+                }
+                    If ( $Abort ) {
+                        Write-Verbose "$($STIG.RuleID): Something is null, not writing"
+                        Continue
+                    }
+
                     ## create the DSC configuration based off the parsing of the CheckContent
                     $NewDscRegistryConfigParameters = @{
                         RuleHeader = $RuleHeader
