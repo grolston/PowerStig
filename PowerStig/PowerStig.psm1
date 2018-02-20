@@ -114,7 +114,7 @@ function Get-RegistryValueData {
                 "0x00008000 (32768)" {$ValueData = '32768'}
                 "0x00030000 (196608)" {$ValueData = '196608'}
                 "0x00008000 (32768)" {$ValueData = '32768'}
-                Default {}
+                default { $null }
             }# close switch
 
         If ( [INT]$ValueData ) {
