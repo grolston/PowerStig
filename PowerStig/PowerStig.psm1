@@ -6,8 +6,8 @@ function Get-RegistryHive {
         [string]$RuleId )
     
     $Hive = switch -regex ($strLine) {
-        "HKEY_LOCAL_MACHINE" { "HKLM:" }
-        "HKEY_CURRENT_USER" { "HKCU:" }
+        "HKEY_LOCAL_MACHINE" { "HKLM:" ; Break }
+        "HKEY_CURRENT_USER" { "HKCU:" ; Break }
         default { $null }
     }
     
@@ -27,7 +27,7 @@ function Get-RegistryPath {
         [string]$Rule )
 
     $RegPath = switch -wildcard ($InputLine) {
-        "Registry Path: *" { $( ($PSItem -replace "Registry Path: ", "").Trim() ) }
+        "Registry Path: *" { $( ($PSItem -replace "Registry Path: ", "").Trim() ) ; Break }
         default { $null }
     }
     
@@ -47,7 +47,7 @@ function Get-RegistryValueName {
         [string]$Rule )
         
         $ValueName = switch -wildcard ($InputLine) {
-            "Value Name: *" { $( ($PSItem -replace "Value Name: ", "").Trim() ) }
+            "Value Name: *" { $( ($PSItem -replace "Value Name: ", "").Trim() ) ; Break }
             default { $null }
         }
 
@@ -67,13 +67,14 @@ function Get-RegistryValueType {
         [string]$Rule )
 
         If ($InputLine -like "*Type: *") {
-            $ValueType = switch -wildcard ($InputLine) {
-                "*REG_DWORD*" {"Dword"} 
-                "*REG_SZ" {"String"}
-                "*REG_BINARY" {"Binary"}
-                "*REG_QWORD" {"Qword"}
-                "*REG_MULTI_SZ" {"MultiString"}
-                "*REG_EXPAND_SZ" {"ExpandString"}
+            $ValueType = switch -regex ($InputLine) {
+                "REG_DWORD*" { "Dword" ; Break } 
+                "REG_SZ" { "String" ; Break }
+                "REG_BINARY" { "Binary" ; Break }
+                "REG_QWORD" { "Qword" ; Break }
+                "REG_MULTI_SZ" { "MultiString" ; Break }
+                "REG_EXPAND_SZ" { "ExpandString" ; Break }
+                default { $null }
             }
         }
         
@@ -92,15 +93,17 @@ function Get-RegistryValueData {
         [string]$InputLine,
         [string]$Rule )
 
-        Write-Verbose "InputLine: $InputLine"
-        #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
-        ## todo: replace this with regex...list has grown
-        $ValueData = switch -regex ($InputLine) {
-            "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) }
-            "\d{1}" { $Matches[0] }
-            Default { $null }
-        } # close switch
+        If ($InputLine -like "*Value: *") {
+            #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
+            ## todo: replace this with regex...list has grown
+            $ValueData = switch -regex ($InputLine) {
+                "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) ; Break }
+                "\d{1}" { $Matches[0] ; Break }
+                Default { $null }
+            } # close switch
+        }
         
+        # Check to see if ValueData is a valid INT - todo: also work properly with string values 
         Try { 
             $ValueData = [INT]$ValueData
         } Catch { 
@@ -109,10 +112,8 @@ function Get-RegistryValueData {
         
         If ($ValueData) {
             Write-Debug "The identified value type for $Rule : $ValueData"
-            Write-Verbose "The identified value type for $Rule : $ValueData"
         } Else {
            Write-Debug "No identified value type for $Rule : $ValueData"
-           Write-Verbose "No identified value type for $Rule : $ValueData"
         }
 
         $ValueData
@@ -250,17 +251,19 @@ function New-DisaStigConfig {
 
             if ($STIG.RuleID -notin $Exceptions) {
                 $Lines = $($STIG.Check).Split("`n")
-                $CheckLines = ""
+                $CheckLines = @()
+                
                 ## loop through each line of the the CheckContent
                 foreach ($line in $Lines) {
-                                            ## eliminate any leading or trailing spaces
-                                            [string]$strLine = $line.Trim()
-                                            $CheckLines += $strLine
-                                            }#close foreach line in lines
-                    $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Policy)"
-                    $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
+                    ## eliminate any leading or trailing spaces
+                    [string]$strLine = $line.Trim()
+                    $CheckLines += $strLine
+                } #close foreach line in lines
                     
-                $Abort = Switch ( $True ) {
+                $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Policy)"
+                $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
+                    
+                $ShouldAbort = Switch ( $True ) {
                     { [String]::IsNullOrEmpty($RuleHeader) } { $true }
                     { [String]::IsNullOrEmpty($($STIG.RuleTitle)) } { $true }
                     { [String]::IsNullOrEmpty($VulnsDetailsSanitized) } { $true }
@@ -271,11 +274,12 @@ function New-DisaStigConfig {
                     { [String]::IsNullOrEmpty($ValueType) } { $true }
                     default { $False }
                 }
-                    If ( $Abort ) {
-                        Write-Verbose "$($STIG.RuleID): Something is null, not writing"
-                        If ($DisplayRules) { [Void]$UnusedRules.Add($($STIG.RuleID)) }
-                        Continue
-                    }
+                
+                If ( $ShouldAbort ) {
+                    Write-Verbose "$($STIG.RuleID): Something is null, not writing"
+                    If ($DisplayRules) { [Void]$UnusedRules.Add($($STIG.RuleID)) }
+                    Continue
+                }
 
                     ## create the DSC configuration based off the parsing of the CheckContent
                     $NewDscRegistryConfigParameters = @{
@@ -288,9 +292,9 @@ function New-DisaStigConfig {
                         Key = $Key
                         ValueType = $ValueType
                     }
-
                     $NewDscConfig = New-DSCRegistryConfig @NewDscRegistryConfigParameters
-                    IF ($DisplayRules) { [Void]$RegistryRules.Add($($STIG.RuleID)) }
+
+                    If ($DisplayRules) { [Void]$RegistryRules.Add($($STIG.RuleID)) }
                     [Void]$DscConfigCollection.Add($NewDscConfig)
             } #close non-registry else
         }# close foreach rule in stig
