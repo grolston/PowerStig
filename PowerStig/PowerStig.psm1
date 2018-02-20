@@ -159,7 +159,11 @@ function New-DisaStigConfig {
         [Parameter(Mandatory = $false,
             Position = 1)]
         [string]
-        $outFile
+        $outFile,
+        [Parameter(Mandatory = $false,
+            Position = 2)]
+        [switch]
+        $DisplayRules
     )
     BEGIN {
         # Load the content as XML
@@ -170,6 +174,10 @@ function New-DisaStigConfig {
             write-warning "Failure converting XML for the XCCDF file."
             Write-Error $_ -ErrorAction Stop
         }
+        If ($DisplayRules) {
+            $UnusedRules = [System.Collections.ArrayList]@()
+            $RegistryRules = [System.Collections.ArrayList]@()
+        }
     }# close BEGIN
     #region Process Registry Fixes
     PROCESS {
@@ -177,7 +185,7 @@ function New-DisaStigConfig {
         $Exceptions = @('SV-87869r1_rule','SV-87871r1_rule','SV-87873r1_rule','SV-87875r2_rule','SV-87885r1_rule','SV-87889r1_rule','SV-87891r1_rule','SV-87893r1_rule'`
                         ,'SV-87895r1_rule','SV-87897r1_rule','SV-87899r1_rule','SV-87911r1_rule','SV-87917r1_rule','SV-87921r1_rule','SV-87923r1_rule','SV-87925r1_rule',`
                         'SV-87927r1_rule')
-        $DscConfigCollection = @()
+        $DscConfigCollection = [System.Collections.ArrayList]@()
         ## loop through the xccdf benchmark collecting data into an object collection
         foreach ($rule in $StigX.Benchmark.Group.Rule) {
             
@@ -274,6 +282,7 @@ function New-DisaStigConfig {
                 }
                     If ( $Abort ) {
                         Write-Verbose "$($STIG.RuleID): Something is null, not writing"
+                        If ($DisplayRules) { [Void]$UnusedRules.Add($($STIG.RuleID)) }
                         Continue
                     }
 
@@ -290,8 +299,8 @@ function New-DisaStigConfig {
                     }
 
                     $NewDscConfig = New-DSCRegistryConfig @NewDscRegistryConfigParameters
-
-                    $DscConfigCollection += $NewDscConfig
+                    IF ($DisplayRules) { [Void]$RegistryRules.Add($($STIG.RuleID)) }
+                    [Void]$DscConfigCollection.Add($NewDscConfig)
             } #close non-registry else
         }# close foreach rule in stig
     }# close PROCESS
@@ -311,6 +320,20 @@ function New-DisaStigConfig {
   }# close DisaStig
 "@
         $DSC | Out-File $outFile
+
+        If ($DisplayRules) {
+            Write-Host "# of Registry Rules: $($RegistryRules.Count)"
+            Write-Host "# of Unused Rules: $($UnusedRules.Count)"
+
+            Write-Host "Registry Rules: "
+            $RegistryRules
+
+            Write-Host ""
+
+            Write-Host "Unused Rules: "
+            $UnusedRules
+        }  
+
     }# close END
 }# close New-DisaStigConfig
 #TODO add console count of stigs processed vs reg and non-reg
