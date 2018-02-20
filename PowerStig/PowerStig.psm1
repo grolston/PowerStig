@@ -67,13 +67,14 @@ function Get-RegistryValueType {
         [string]$Rule )
 
         If ($InputLine -like "*Type: *") {
-            $ValueType = switch -wildcard ($InputLine) {
-                "*REG_DWORD*" {"Dword"} 
-                "*REG_SZ" {"String"}
-                "*REG_BINARY" {"Binary"}
-                "*REG_QWORD" {"Qword"}
-                "*REG_MULTI_SZ" {"MultiString"}
-                "*REG_EXPAND_SZ" {"ExpandString"}
+            $ValueType = switch -regex ($InputLine) {
+                "REG_DWORD*" { "Dword" } 
+                "REG_SZ" { "String" }
+                "REG_BINARY" { "Binary" }
+                "REG_QWORD" { "Qword" }
+                "REG_MULTI_SZ" { "MultiString" }
+                "REG_EXPAND_SZ" { "ExpandString" }
+                default { $null }
             }
         }
         
@@ -92,15 +93,17 @@ function Get-RegistryValueData {
         [string]$InputLine,
         [string]$Rule )
 
-        Write-Verbose "InputLine: $InputLine"
-        #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
-        ## todo: replace this with regex...list has grown
-        $ValueData = switch -regex ($InputLine) {
-            "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) }
-            "\d{1}" { $Matches[0] }
-            Default { $null }
-        } # close switch
+        If ($InputLine -like "*Value: *") {
+            #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
+            ## todo: replace this with regex...list has grown
+            $ValueData = switch -regex ($InputLine) {
+                "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) }
+                "\d{1}" { $Matches[0] }
+                Default { $null }
+            } # close switch
+        }
         
+        # Check to see if ValueData is a valid INT - todo: also work properly with string values 
         Try { 
             $ValueData = [INT]$ValueData
         } Catch { 
@@ -109,10 +112,8 @@ function Get-RegistryValueData {
         
         If ($ValueData) {
             Write-Debug "The identified value type for $Rule : $ValueData"
-            Write-Verbose "The identified value type for $Rule : $ValueData"
         } Else {
            Write-Debug "No identified value type for $Rule : $ValueData"
-           Write-Verbose "No identified value type for $Rule : $ValueData"
         }
 
         $ValueData
@@ -288,9 +289,9 @@ function New-DisaStigConfig {
                         Key = $Key
                         ValueType = $ValueType
                     }
-
                     $NewDscConfig = New-DSCRegistryConfig @NewDscRegistryConfigParameters
-                    IF ($DisplayRules) { [Void]$RegistryRules.Add($($STIG.RuleID)) }
+
+                    If ($DisplayRules) { [Void]$RegistryRules.Add($($STIG.RuleID)) }
                     [Void]$DscConfigCollection.Add($NewDscConfig)
             } #close non-registry else
         }# close foreach rule in stig
