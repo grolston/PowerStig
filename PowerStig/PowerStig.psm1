@@ -92,25 +92,31 @@ function Get-RegistryValueData {
         [string]$InputLine,
         [string]$Rule )
 
-        if ($InputLine -LIKE "Value: *") {
-            $ValueData = ($strLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
-            ## todo: replace this with regex...list has grown
-            switch ($ValueData) {
-                "0x\w{8}" { $ValueData = $( [Convert]::ToInt32($Matches[0],16) ) }
-                Default { $null }
-            } # close switch
-            
-            $ValueData
-        }
-
-        If ( [INT]$ValueData ) {
-            Write-Debug "The identified value type for $Rule : $ValueData" 
+        Write-Verbose "InputLine: $InputLine"
+        #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
+        ## todo: replace this with regex...list has grown
+        $ValueData = switch -regex ($InputLine) {
+            "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) }
+            "\d{1}" { $Matches[0] }
+            Default { $null }
+        } # close switch
+        
+        Try { 
+            $ValueData = [INT]$ValueData
+        } Catch { 
+            $ValueData = $Null
+        } 
+        
+        If ($ValueData) {
+            Write-Debug "The identified value type for $Rule : $ValueData"
+            Write-Verbose "The identified value type for $Rule : $ValueData"
         } Else {
-            Write-Debug "No identified value type for $Rule : $ValueData" 
+           Write-Debug "No identified value type for $Rule : $ValueData"
+           Write-Verbose "No identified value type for $Rule : $ValueData"
         }
 
         $ValueData
-} # Close Get-RegistryValueData
+} # close Get-RegistryValueData
   
 function New-DisaStigConfig {
     <#
