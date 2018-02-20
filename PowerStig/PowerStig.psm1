@@ -92,40 +92,31 @@ function Get-RegistryValueData {
         [string]$InputLine,
         [string]$Rule )
 
-        if ($InputLine -LIKE "Value: *") {
-            $ValueData = ($strLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
-            ## todo: replace this with regex...list has grown
-            switch ($ValueData) {
-                '0x000000ff (255)' {$ValueData = '255'}
-                '0x00000004 (4)' {$ValueData = '4'}
-                '0x0000000f (15)' {$ValueData = '15'}
-                '0x0000000a (10)' {$ValueData = '10'}
-                '(blank)' {$ValueData = ''}
-                '0x20080000 (537395200)' {$ValueData = '537395200'}
-                '0x0000ea60 (60000)' {$ValueData = '60000'}
-                '0x20080000 (537395200)' {$ValueData = '53739520'}
-                '0x00008000 (32768) (or greater)' {$ValueData = '32768'}
-                '0x00030000 (196608) (or greater)' {$ValueData = '196608'}
-                '0x00008000 (32768) (or greater)' {$ValueData = '32768'}
-                '0x00000002 (2)' {$ValueData = '2'}
-                '0x00000384 (900)' {$ValueData = '900'}
-                '0x00000032 (50)' {$ValueData = '50'}
-                "0x00000064 (100)" {$ValueData = '100'}
-                "0x00008000 (32768)" {$ValueData = '32768'}
-                "0x00030000 (196608)" {$ValueData = '196608'}
-                "0x00008000 (32768)" {$ValueData = '32768'}
-                Default { $null }
-            } # close switch
-        }
-
-        If ( [INT]$ValueData ) {
-            Write-Debug "The identified value type for $Rule : $ValueData" 
+        Write-Verbose "InputLine: $InputLine"
+        #$InputLine = ($InputLine -replace "Value: ", "" -replace "\(or less\)" -replace "\(or greater\)" -replace "\(Enabled\)").Trim()
+        ## todo: replace this with regex...list has grown
+        $ValueData = switch -regex ($InputLine) {
+            "0x\w{8}" { $( [Convert]::ToInt32($Matches[0],16) ) }
+            "\d{1}" { $Matches[0] }
+            Default { $null }
+        } # close switch
+        
+        Try { 
+            $ValueData = [INT]$ValueData
+        } Catch { 
+            $ValueData = $Null
+        } 
+        
+        If ($ValueData) {
+            Write-Debug "The identified value type for $Rule : $ValueData"
+            Write-Verbose "The identified value type for $Rule : $ValueData"
         } Else {
-            Write-Debug "No identified value type for $Rule : $ValueData" 
+           Write-Debug "No identified value type for $Rule : $ValueData"
+           Write-Verbose "No identified value type for $Rule : $ValueData"
         }
 
         $ValueData
-} # Close Get-RegistryValueData
+} # close Get-RegistryValueData
   
 function New-DisaStigConfig {
     <#
@@ -332,7 +323,7 @@ function New-DisaStigConfig {
 
             Write-Host "Unused Rules: "
             $UnusedRules
-        }  
+        }   
 
     }# close END
 }# close New-DisaStigConfig
