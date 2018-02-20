@@ -1,13 +1,19 @@
-﻿#Based on code from http://www.entelechyit.com/2017/01/29/powershell-and-disa-stigs-part-3/
+#Based on code from http://www.entelechyit.com/2017/01/29/powershell-and-disa-stigs-part-3/
 
 function Get-RegistryHive {
-    PARAM([string]$RegHive)
-    [string]$key = switch -wildcard ($RegHive) { 
-        "*HKEY_LOCAL_MACHINE" {"HKLM:"} 
-        "*HKEY_CURRENT_USER" {"HKCU:"} 
+    [CmdletBinding()]
+    param([string]$strLine)
+    
+    $Hive = Switch -regex ($strLine) {
+        "HKEY_LOCAL_MACHINE" { "HKLM:" }
+        "HKEY_CURRENT_USER" { "HKCU:" }
+        default { $null }
     }
-    write-output $key
-}# close Get-RegistryHive
+    Write-Debug "Identified Hive: $Hive"
+
+    $Hive
+} # close Get-RegistryHive
+
   
 function Get-RegTypeValue {
     PARAM([string]$Type)
@@ -95,12 +101,12 @@ function New-DisaStigConfig {
                 foreach ($line in $Lines) {
                     ## eliminate any leading or trailing spaces
                     [string]$strLine = $line.Trim()
-                    ## find the registry root
-                    if ($strLine -LIKE "Registry Hive: HK*") {
-                        if ($strLine -LIKE "Registry Hive: HKEY_LOCAL_MACHINE") {$Hive = "HKLM:"}
-                        if ($strLine -LIKE "Registry Hive: HKEY_CURRENT_USER") {$Hive = "HKCU:"}
-                        Write-Debug "The identified Hive for $($STIG.id) : $Hive"
+                    ## find the registry hive
+                    
+                    If ($Hive -ne $Null) {
+                        $Hive = Get-RegistryHive $strLine
                     }
+                    
                     ## find the registry path and put together with hive
                     elseif ($strLine -LIKE "Registry Path: *") {
                         $Path = ($strLine -replace "Registry Path: ", "").Trim()
