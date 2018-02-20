@@ -251,17 +251,19 @@ function New-DisaStigConfig {
 
             if ($STIG.RuleID -notin $Exceptions) {
                 $Lines = $($STIG.Check).Split("`n")
-                $CheckLines = ""
+                $CheckLines = @()
+                
                 ## loop through each line of the the CheckContent
                 foreach ($line in $Lines) {
-                                            ## eliminate any leading or trailing spaces
-                                            [string]$strLine = $line.Trim()
-                                            $CheckLines += $strLine
-                                            }#close foreach line in lines
-                    $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Policy)"
-                    $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
+                    ## eliminate any leading or trailing spaces
+                    [string]$strLine = $line.Trim()
+                    $CheckLines += $strLine
+                } #close foreach line in lines
                     
-                $Abort = Switch ( $True ) {
+                $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Policy)"
+                $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
+                    
+                $ShouldAbort = Switch ( $True ) {
                     { [String]::IsNullOrEmpty($RuleHeader) } { $true }
                     { [String]::IsNullOrEmpty($($STIG.RuleTitle)) } { $true }
                     { [String]::IsNullOrEmpty($VulnsDetailsSanitized) } { $true }
@@ -272,11 +274,12 @@ function New-DisaStigConfig {
                     { [String]::IsNullOrEmpty($ValueType) } { $true }
                     default { $False }
                 }
-                    If ( $Abort ) {
-                        Write-Verbose "$($STIG.RuleID): Something is null, not writing"
-                        If ($DisplayRules) { [Void]$UnusedRules.Add($($STIG.RuleID)) }
-                        Continue
-                    }
+                
+                If ( $ShouldAbort ) {
+                    Write-Verbose "$($STIG.RuleID): Something is null, not writing"
+                    If ($DisplayRules) { [Void]$UnusedRules.Add($($STIG.RuleID)) }
+                    Continue
+                }
 
                     ## create the DSC configuration based off the parsing of the CheckContent
                     $NewDscRegistryConfigParameters = @{
