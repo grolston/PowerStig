@@ -114,8 +114,9 @@ function Get-RegistryValueData {
                 "0x00008000 (32768)" {$ValueData = '32768'}
                 "0x00030000 (196608)" {$ValueData = '196608'}
                 "0x00008000 (32768)" {$ValueData = '32768'}
-                default { $null }
-            }# close switch
+                Default { $null }
+            } # close switch
+        }
 
         If ( [INT]$ValueData ) {
             Write-Debug "The identified value type for $Rule : $ValueData" 
@@ -253,9 +254,21 @@ function New-DisaStigConfig {
                                             }#close foreach line in lines
                     $RuleHeader = "$($STIG.RuleID) : $($STIG.Severity) (Policy)"
                     $VulnsDetailsSanitized = $STIG.VulnerabilityDetails | Sanitize-String
+                    
                     ## create the DSC configuration based off the parsing of the CheckContent
-                    $NewDscConfig = New-DSCPolicyConfig -RuleHeader $RuleHeader -RuleTitle $($STIG.RuleTitle) `
-                        -Description $VulnsDetailsSanitized -RuleID $($STIG.RuleID) -CheckLines $CheckLines -FixText $STIG.Fix
+                    $NewDscRegistryConfigParameters = @{
+                        RuleHeader = $RuleHeader
+                        RuleTitle = $($STIG.RuleTitle)
+                        Description = $VulnsDetailsSanitized
+                        RuleID = $($STIG.RuleID)
+                        ValueName = $ValueName
+                        ValueData = $ValueData
+                        Key = $Key
+                        ValueType = $ValueType
+                    }
+                    
+                    $NewDscConfig = New-DSCRegistryConfig @NewDscRegistryConfigParameters
+
                     $DscConfigCollection += $NewDscConfig
             } #close non-registry else
         }# close foreach rule in stig
@@ -282,36 +295,6 @@ function New-DisaStigConfig {
 #TODO add console count of stigs processed vs reg and non-reg
 Export-ModuleMember -Function New-DisaStigConfig
 
-function New-DSCPolicyConfig {
-    PARAM(
-        [string]$RuleHeader,
-        [string]$RuleTitle,
-        [string]$Description,
-        [string]$RuleID,
-        [string]$CheckLines,
-        [string]$FixText
-    )
-    $CreateDscConfig = @"
-      #region $RuleHeader
-      ## Title: $($STIG.RuleTitle)
-      <# 
-        Description: $Description
-      #>
-      Registry $RuleID {
-        Ensure = 'Present'
-        PolicyType = 'Machine'
-        KeyValueName = 'PolicyPath'
-        Type = 'DWord'
-        Data = '0'
-        CheckLines = "$CheckLines" 
-        FixText = "$FixText"
-        }
-      #endregion $RuleHeader
-
-"@
-    Write-Output $CreateDscConfig
-}# close Create-DSCPolicyConfig
-    
 function New-DSCRegistryConfig {
     PARAM(
         [string]$RuleHeader,
