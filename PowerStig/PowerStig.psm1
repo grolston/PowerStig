@@ -1,18 +1,44 @@
 #Based on code from http://www.entelechyit.com/2017/01/29/powershell-and-disa-stigs-part-3/
-
 function Get-RegistryHive {
     [CmdletBinding()]
-    param([string]$strLine)
+    param(
+        [string]$InputLine,
+        [string]$RuleId )
     
-    $Hive = Switch -regex ($strLine) {
+    $Hive = switch -regex ($strLine) {
         "HKEY_LOCAL_MACHINE" { "HKLM:" }
         "HKEY_CURRENT_USER" { "HKCU:" }
         default { $null }
     }
-    Write-Debug "Identified Hive: $Hive"
+    
+    If ($Hive) {
+        Write-Debug "The identified registry hive for $RuleId : $Hive"
+    } Else {
+        Write-Debug "No identified registry hive for $Ruleid."
+    }
 
     $Hive
 } # close Get-RegistryHive
+
+function Get-RegistryPath {
+    [CmdletBinding()]
+    param(
+        [string]$InputLine,
+        [string]$RuleId )
+
+    $RegPath = switch -wildcard ($strLine) {
+        "Registry Path: *" { $(($PSItem -replace "Registry Path: ", "").Trim()) }
+        default { $null }
+    }
+    
+    If ($Path) {
+        Write-Debug "The identified registry path for $RuleId) : $Path"
+    } Else {
+        Write-Debug "No identified registry path for $RuleId)."
+    }
+
+    $RegPath
+} # close Get-RegistryPath
 
   
 function Get-RegTypeValue {
@@ -103,22 +129,16 @@ function New-DisaStigConfig {
                     [string]$strLine = $line.Trim()
                     ## find the registry hive
                     
-                    If ($Hive -ne $Null) {
-                        $Hive = Get-RegistryHive $strLine
-                        If ($Hive) {
-                            Write-Debug "The identified registry path for $($STIG.Ruleid) : $Hive"
-                        } Else {
-                            Write-Debug "No identified registry path for $($STIG.Ruleid)."
-                        }
+                    If ($Hive -eq $Null) {
+                        $Hive = Get-RegistryHive -InputLine $strLine -RuleId $($STIG.Ruleid)
                     }
                     
-                    ## find the registry path and put together with hive
-                    elseif ($strLine -LIKE "Registry Path: *") {
-                        $Path = ($strLine -replace "Registry Path: ", "").Trim()
-                        Write-Debug "The identified registry path for $($STIG.Ruleid) : $Path"
-                        $Key = $Hive + $Path
-                        Write-Debug "The identified registry key for $($STIG.Ruleid) : $Key"
+                    ## find the registry path
+                    If ($Path -eq $Null) {
+                        $Path = Get-RegistryPath -InputLine $strLine -RuleId $($STIG.Ruleid)
                     }
+
+                    $Key = $Hive + $Path
                     ## find the -ValueName portion of our audit
                     elseif ($strLine -LIKE "Value Name: *") {
                         $ValueName = ($strLine -replace "Value Name: ", "").Trim()  
