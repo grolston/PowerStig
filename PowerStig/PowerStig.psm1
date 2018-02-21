@@ -7,7 +7,9 @@ function Get-RegistryHive {
     
     $Hive = switch -regex ($strLine) {
         "HKEY_LOCAL_MACHINE" { "HKLM:" ; Break }
+        "HKLM" { "HKLM:" ; Break }
         "HKEY_CURRENT_USER" { "HKCU:" ; Break }
+        "HKCU" { "HKCU:" ; Break }
         default { $null }
     }
     
